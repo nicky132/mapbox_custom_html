@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title>显示具有自定义属性的HTML聚类</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v1.1.1/mapbox-gl.js'></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/echarts/4.1.0/echarts.min.js"></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v1.1.1/mapbox-gl.css' rel='stylesheet' />
+    <style>
+        body { margin:0; padding:0; }
+        #map { position:absolute; top:0; bottom:0; width:100%; }
+        .cell{
+            width: 32px;
+            height: 32px;
+            line-height: 32px;
+            background-color: red;
+            text-align: center;
+        }
+        .marker {
+            background-image: url('https://docs.mapbox.com/mapbox-gl-js/assets/washington-monument.jpg');
+            background-size: cover;
+            width: 50px;
+            height: 50px;
+            line-height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            text-align: center;
+        }
+        .point,.point::before,.point::after{
+            position: absolute;
+            /* width: 12px; 
+            height: 12px;  */
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 50px; 
+            height: 50px; 
+            border-radius: 50%;
+            content: ''; 
+        }
+        .point::before{
+            animation: scale 2s infinite; 
+        }
+        .point::after{
+            animation: scale2 2s infinite; 
+        }
+        @keyframes scale{
+            0%{ 
+            transform: scale(1); 
+            opacity:.9
+           }
+           100%{ 
+               transform: scale(6); 
+               opacity: 0;
+            }
+        }
+        @keyframes scale2{
+            0%{ 
+                transform: scale(1);
+                opacity:.9;
+            }100%{ 
+                transform: scale(12);
+                opacity:0;
+            }
+        }
+        
+
+        .point,.point::before,.point::after{
+            /* 设置颜色 */
+            background-color: rgba(241, 34, 30, .9);
+        }
+        .point2,.point2::before,.point2::after{
+            /* 设置颜色 */
+            background-color: rgba(0, 221, 254, .9);
+        }
+        .point3,.point3::before,.point3::after{
+            /* 设置颜色 */
+            background-color:  rgba(1, 88, 255, .9);
+        }
+        .point4,.point4::before,.point4::after{
+            /* 设置颜色 */
+            background-color:  rgba(135, 229, 8, .9);
+        }
+    </style>
+</head>
+<body>
+
+
+<div id='map'></div>
+
+<script>
+mapboxgl.accessToken = 'pk.eyJ1Ijoid2ViYjI0aCIsImEiOiJjazU3a2lkbW4wNGJrM2RvNnNrNnBzbGlxIn0.GGnF34IsMQyqKNoam241tA';
+var map = new mapboxgl.Map({
+    container: 'map',
+    zoom: 0.3,
+    center: [0, 20],
+    style: 'mapbox://styles/mapbox/light-v10'
+});
+
+map.addControl(new mapboxgl.NavigationControl());
+
+map.on('load', function () {
+    // add a clustered GeoJSON source for a sample set of earthquakes
+    map.addSource('earthquakes', {
+        "type": "geojson",
+        "data": "https://docs.mapbox.com/mapbox-gl-js/assets/earthquakes.geojson",
+        "cluster": true,
+    });
+    map.addLayer({
+        "id": "earthquake_label",
+        "type": "symbol",
+        "source": "earthquakes",
+        "filter": ["!=", "cluster", true],
+        "layout": {
+            "text-field": "{point_count_abbreviated}",
+            "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+            "text-size": 14
+        }
+    });
+
+    // map.addLayer({
+    //     id: "unclustered-point",
+    //     type: "circle",
+    //     source: "earthquakes",
+    //     filter: ["!", ["has", "point_count"]],
+    //     paint: {
+    //         "circle-color": "#11b4da",
+    //         "circle-radius": 20,
+    //         "circle-stroke-width": 1,
+    //         "circle-stroke-color": "#fff"
+    //     },
+    // });
+
+    var markers = {};
+    var markersOnScreen = {};
+
+    function updateMarkers() {
+        var newMarkers = {};
+        var features = map.querySourceFeatures('earthquakes');
+        var id = "";
+        var marker = null;
+        var el = "";
+        var popup = null;
+        let ele = null;
+        console.log("features==",features)
+        for (var i = 0; i < features.length; i++) {
+            var coords = features[i].geometry.coordinates;
+            var props = features[i].properties;
+            // if (!props.cluster) continue;
+            if(!props.cluster){
+                //非聚合点自定义html
+                id = props.id;
+                marker = markers[id];
+                if (!marker) {
+                    el = document.createElement('div');
+                    el.className = 'marker point';
+                    el.innerHTML=props.mag;
+                    ele = document.createElement('div');
+                    ele.className = 'marker-pop';
+                    ele.innerHTML=props.mag;
+                    popup = new mapboxgl.Popup().setHTML(`<div class="popDetail">
+                    <div class="detailContainer">
+                        <div class="title">企业概况</div>
+                        <div class="category">位置:${coords}</div>
+                        <div class="category">mag数量:${props.mag}</div>
+                        <p class="category">企业名称: ${features.name}</p>
+                        <p class="category">注册地: ${features.regaddress}</p>
+                        <p class="category">注册资本金(万元): ${features.regcapital}</p>
+                        <p class="category">控股股东: ${features.shareholder}</p>
+                        <p class="category">单体公司之母公司持股比例: ${features.shareholder_ratio}</p>
+                        <p class="category">其他股东及持股比例: ${features.other_shareholder}</p>
+                        <p class="category">经营品类: ${features.management_item}</p>
+                        <p class="category">净资产总额(万元): ${features.assets}</p>
+                        <p class="category">营收总额(万元): ${features.revenue}</p>
+                        <p class="category">利润总额(万元): ${features.profit}</p>
+                    </div>
+                    </div>`);
+                    marker = markers[id] = new mapboxgl.Marker({element: el}).setLngLat(coords).setPopup(popup);
+                }
+            }else{
+                //聚合点自定义html
+                id = props.cluster_id;
+                marker = markers[id];
+                if (!marker) {
+                    el = createDonutChart(props);
+                    marker = markers[id] = new mapboxgl.Marker({element: el}).setLngLat(coords);
+                }
+            }
+
+            newMarkers[id] = marker;
+                if (!markersOnScreen[id])
+                    marker.addTo(map);
+        }
+        // for every marker we've added previously, remove those that are no longer visible
+        for (id in markersOnScreen) {
+            if (!newMarkers[id])
+                markersOnScreen[id].remove();
+        }
+        markersOnScreen = newMarkers;
+    }
+
+    map.on('data', function (e) {
+        if (e.sourceId !== 'earthquakes' || !e.isSourceLoaded) return;
+        map.on('move', updateMarkers);
+        map.on('moveend', updateMarkers);
+        updateMarkers();
+    });
+});
+
+function createDonutChart(props) {
+    var el = document.createElement('div');
+    el.id="mapboxid";
+    el.className = 'markerCell';
+    el.style.width = 32 + 'px';
+    el.style.height = 32 + 'px';
+    el.innerHTML = '<div class="cell">'+props.point_count_abbreviated+'</div>';
+    return el.firstChild;
+}
+</script>
+
+</body>
+</html>
